@@ -1,3 +1,4 @@
+import os
 import google.generativeai as genai
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -8,7 +9,7 @@ CORS(app)
 
 # --- НАСТРОЙКА ИИ ---
 # Твой ключ я уже вставила сюда, всё четко
-genai.configure(api_key="AIzaSyBD94mYsRDhb_E0QW8LBpOenfMQBBKvlLE")
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 
 # АВТОМАТИЧЕСКИЙ ПОИСК МОДЕЛИ
 model_name = 'gemini-1.5-flash' # запасной вариант
@@ -63,4 +64,5 @@ def generate():
         return jsonify({"error": "ИИ закапризничал"}), 500
 
 if __name__ == '__main__':
+
     app.run(debug=True, port=5000)
