@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Aetheris AI Quest</title>
+    <style>
+        body {
+            background-color: #0d0d0d;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        .container {
+            background-color: #1a1a1a;
+            padding: 40px;
+            border-radius: 20px;
+            border: 1px solid #333;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.05);
+            text-align: center;
+            transition: all 0.5s ease;
+            animation: fadeIn 0.8s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .logo { 
+            font-size: 26px; font-weight: bold; letter-spacing: 4px; 
+            color: #fff; margin-bottom: 25px; text-transform: uppercase;
+            text-shadow: 0 0 10px rgba(255,255,255,0.3);
+        }
+        label { display: block; margin: 15px 0 5px; color: #888; font-size: 13px; text-align: left; text-transform: uppercase; letter-spacing: 1px; }
+        textarea, select, input {
+            width: 100%; background-color: #252525; border: 1px solid #444; color: #fff;
+            padding: 12px; border-radius: 10px; box-sizing: border-box; font-size: 16px; margin-bottom: 10px;
+            outline: none; transition: border 0.3s;
+        }
+        textarea:focus { border-color: #666; }
+        .main-btn {
+            background-color: #ffffff; color: #000; border: none; padding: 15px;
+            width: 100%; border-radius: 10px; font-weight: bold; margin-top: 15px; 
+            cursor: pointer; transition: 0.3s; text-transform: uppercase; letter-spacing: 1px;
+        }
+        .main-btn:hover { background-color: #cccccc; transform: scale(1.02); }
+        
+        .choice-btn {
+            background-color: #252525; color: #fff; border: 1px solid #444; padding: 15px;
+            margin-top: 12px; width: 100%; border-radius: 10px; cursor: pointer; 
+            text-align: left; transition: all 0.2s ease; font-size: 15px;
+        }
+        .choice-btn:hover { border-color: #888; background-color: #2a2a2a; }
+        .choice-btn.correct { background-color: #1b4332 !important; border-color: #2d6a4f !important; }
+        .choice-btn.wrong { background-color: #431b1b !important; border-color: #6a2d2d !important; }
+        .choice-btn.clicked { background-color: #ffffff !important; color: #000 !important; }
+        
+        .result-score { font-size: 48px; font-weight: bold; margin: 20px 0; color: #fff; }
+        .hidden { display: none !important; }
+        #question-text { font-size: 18px; line-height: 1.6; margin-bottom: 25px; min-height: 60px; }
+    </style>
+</head>
+<body>
+
+<div class="container" id="setup-screen">
+    <div class="logo">Aetheris AI</div>
+    <label>Текст лекции:</label>
+    <textarea id="lecture-text" rows="4" placeholder="Вставь содержание лекции здесь..."></textarea>
+    <label>Сложность:</label>
+    <select id="difficulty">
+        <option value="easy">Easy (Базовый)</option>
+        <option value="normal" selected>Standard (Средний)</option>
+        <option value="hard">Hardcore (Для профи)</option>
+    </select>
+    <label>Кол-во вопросов:</label>
+    <input type="number" id="q-count" value="3" min="1" max="10">
+    <button class="main-btn" onclick="startQuest()">Инициализировать</button>
+</div>
+
+<div class="container hidden" id="game-screen">
+    <div class="logo" id="question-title">Quest</div>
+    <p id="question-text">Считывание нейронных связей...</p>
+    <div id="choices"></div>
+</div>
+
+<div class="container hidden" id="result-screen">
+    <div class="logo">Завершено</div>
+    <p>Твой результат сканирования:</p>
+    <div class="result-score" id="final-score">0 / 0</div>
+    <p id="result-comment">Неплохо для начала, Ринтаро!</p>
+    <button class="main-btn" onclick="resetGame()">Начать заново</button>
+</div>
+
+<script>
+    let currentQuestions = [];
+    let currentIndex = 0;
+    let score = 0;
+
+    async function startQuest() {
+        const lecture = document.getElementById('lecture-text').value;
+        const count = document.getElementById('q-count').value;
+        const diff = document.getElementById('difficulty').value;
+
+        if (!lecture) { alert("Ринтаро, без текста космос пуст! Вставь что-нибудь."); return; }
+
+        // Показываем экран загрузки
+        document.getElementById('setup-screen').classList.add('hidden');
+        document.getElementById('game-screen').classList.remove('hidden');
+        document.getElementById('question-text').innerText = "Gemini анализирует данные...";
+
+        try {
+            const response = await fetch('http://127.0.0.1:5000/generate', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ lecture: lecture, count: count, difficulty: diff })
+            });
+
+            const data = await response.json();
+            currentQuestions = data.questions;
+            currentIndex = 0;
+            score = 0;
+
+            showQuestion();
+        } catch (err) {
+            alert("Ошибка связи! Проверь терминал, там должен быть запущен Питон.");
+            resetGame();
+        }
+    }
+
+    function showQuestion() {
+        const q = currentQuestions[currentIndex];
+        document.getElementById('question-title').innerText = `Step ${currentIndex + 1} / ${currentQuestions.length}`;
+        document.getElementById('question-text').innerText = q.question;
+        
+        const choicesDiv = document.getElementById('choices');
+        choicesDiv.innerHTML = '';
+
+        q.choices.forEach(choice => {
+            const btn = document.createElement('button');
+            btn.className = 'choice-btn';
+            btn.innerText = choice.text;
+            btn.onclick = () => handleChoice(btn, choice.is_correct);
+            choicesDiv.appendChild(btn);
+        });
+    }
+
+    function handleChoice(element, isCorrect) {
+        // Запрещаем повторные нажатия, пока идет анимация
+        const buttons = document.querySelectorAll('.choice-btn');
+        buttons.forEach(b => b.style.pointerEvents = 'none');
+
+        element.classList.add('clicked');
+        
+        setTimeout(() => {
+            element.classList.remove('clicked');
+            if (isCorrect) {
+                element.classList.add('correct');
+                score++;
+            } else {
+                element.classList.add('wrong');
+                // Подсвечиваем правильный вариант
+                const correctBtn = Array.from(buttons).find((b, idx) => currentQuestions[currentIndex].choices[idx].is_correct);
+                if (correctBtn) correctBtn.classList.add('correct');
+            }
+
+            setTimeout(() => {
+                currentIndex++;
+                if (currentIndex < currentQuestions.length) {
+                    showQuestion();
+                } else {
+                    showResults();
+                }
+            }, 1200);
+        }, 150);
+    }
+
+    function showResults() {
+        document.getElementById('game-screen').classList.add('hidden');
+        document.getElementById('result-screen').classList.remove('hidden');
+        document.getElementById('final-score').innerText = `${score} / ${currentQuestions.length}`;
+        
+        let comment = "Потрясающе, Ринтаро! Ты всё усвоил.";
+        if (score < currentQuestions.length / 2) comment = "Есть над чем поработать. Попробуем еще раз?";
+        else if (score < currentQuestions.length) comment = "Хороший результат! Почти идеально.";
+        
+        document.getElementById('result-comment').innerText = comment;
+    }
+
+    function resetGame() {
+        document.getElementById('result-screen').classList.add('hidden');
+        document.getElementById('game-screen').classList.add('hidden');
+        document.getElementById('setup-screen').classList.remove('hidden');
+        document.getElementById('choices').innerHTML = '';
+    }
+</script>
+</body>
+</html>
