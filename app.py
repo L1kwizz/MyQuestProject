@@ -1,22 +1,24 @@
 import os
 import google.generativeai as genai
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import json
 
 app = Flask(__name__)
 CORS(app)
 
+@app.route('/')
+def index():
+    return send_from_directory('.', 'index.html')
+
 # --- НАСТРОЙКА ИИ ---
-# Твой ключ я уже вставила сюда, всё четко
 genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 
 # АВТОМАТИЧЕСКИЙ ПОИСК МОДЕЛИ
-model_name = 'gemini-1.5-flash' # запасной вариант
+model_name = 'gemini-1.5-flash' 
 try:
     for m in genai.list_models():
         if 'generateContent' in m.supported_generation_methods:
-            # Находим самую свежую модель
             model_name = m.name
             break
     print(f"--- УСПЕХ: Используем модель {model_name} ---")
@@ -55,7 +57,6 @@ def generate():
 
     try:
         response = model.generate_content(prompt)
-        # Убираем лишние знаки, если ИИ их добавит
         clean_json = response.text.replace('```json', '').replace('```', '').strip()
         result = json.loads(clean_json)
         return jsonify(result)
@@ -64,5 +65,4 @@ def generate():
         return jsonify({"error": "ИИ закапризничал"}), 500
 
 if __name__ == '__main__':
-
-    app.run(debug=True, port=5000)
+    app.run(debug=True)
