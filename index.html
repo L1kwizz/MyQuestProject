@@ -114,7 +114,7 @@
         document.getElementById('question-text').innerText = "Gemini анализирует данные...";
 
         try {
-            const response = await fetch('http://127.0.0.1:5000/generate', {
+            const response = await fetch('https://my-aetheris-quest.onrender.com/generate', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ lecture: lecture, count: count, difficulty: diff })
@@ -199,4 +199,5 @@
     }
 </script>
 </body>
+
 </html>
